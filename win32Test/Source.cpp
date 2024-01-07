@@ -23,6 +23,7 @@ void Paint(HWND windowHandle) {
 	HDC hdc = BeginPaint(windowHandle, &ps);
 	HBRUSH brush = colourAlternate ? (HBRUSH)(COLOR_WINDOW + 1) : (HBRUSH)(COLOR_WINDOWTEXT + 1);
 	FillRect(hdc, &ps.rcPaint, brush);
+	DrawText(hdc, L"My Text!", -1, &ps.rcPaint, DT_CENTER | DT_VCENTER);
 	EndPaint(windowHandle, &ps);
 	colourAlternate = !colourAlternate;
 	MY_PRINTF(L"%d\n", colourAlternate)
@@ -61,49 +62,27 @@ LRESULT CALLBACK WindowProc(HWND windowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 	return 0;
 };
 
-void CreateMainWindowClass(HINSTANCE applicationInstanceHandle, const wchar_t* className) {
-	WNDCLASS wc = {}; // Brakets zero initialize struct
-	// lpfnWndProc = long pointer to a function called Window Procedure (i love microsoft <3)
-	wc.lpfnWndProc = WindowProc;
-	wc.hInstance = applicationInstanceHandle;
-	wc.lpszClassName = className;
-	wc.style = CS_DROPSHADOW;
-	RegisterClass(&wc);
-}
-
-
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	PSTR lpCmdLine, int nCmdShow)
 {
 	const wchar_t WND_CLASS_NAME[] = L"IDontKnowWhatThisShouldBe";
-	// Create a console to debug with. https://stackoverflow.com/questions/1333527/how-do-i-print-to-the-debug-output-window-in-a-win32-app
-	/*AllocConsole();
-	freopen("CONIN$", "r", stdin);
-	freopen("CONOUT$", "w", stdout);
-	freopen("CONOUT$", "w", stderr);*/
-	OutputDebugStringW(L"Hello world!!.\n");
 
-
-	CreateMainWindowClass(hInstance, WND_CLASS_NAME);
-
-	//HWND windowHandle = CreateWindowEx(
-	//	0,
-	//	WND_CLASS_NAME,
-	//	L"Window Title?",
-	//	WS_OVERLAPPEDWINDOW, // change here to remove window border and title bar and stuff
-	//	CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, // Window coordinates and dimentions
-	//	NULL, NULL, hInstance, NULL
-	//);
+	WNDCLASS wc = {}; // Brakets zero initialize struct
+	// lpfnWndProc = long pointer to a function called Window Procedure (i love microsoft <3)
+	wc.lpfnWndProc = WindowProc;
+	wc.hInstance = hInstance;
+	wc.lpszClassName = WND_CLASS_NAME;
+	RegisterClass(&wc);
 
 	// hwnd = Handle to window
 	HWND hwnd = CreateWindowEx(
 		0,                              // Optional window styles.
 		WND_CLASS_NAME,                     // Window class
 		L"Learn to Program Windows",    // Window text
-		WS_OVERLAPPEDWINDOW,            // Window style
+		WS_EX_TOPMOST | WS_POPUP,            // Window style WS_EX_TRANSPARENT
 
 		// Size and position
-		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+		100, 100, 100, 100,
 
 		NULL,       // Parent window    
 		NULL,       // Menu
@@ -114,11 +93,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		return -1;
 	}
 
+	SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
+	SYSTEMTIME startTime;
+	GetSystemTime(&startTime);
+
+	/*OutputDebugStringW(L"Started\n");
+	Sleep(2000);*/
+	OutputDebugStringW(L"Capturing\n");
+	HWND foregroundWindow = GetForegroundWindow();
+	wchar_t* str = (wchar_t*)malloc(sizeof(wchar_t) * 128);
+	GetWindowTextW(foregroundWindow, str, 128);
+	OutputDebugStringW(str);
+	// if the titles are changing can swap to using GetWindowThreadProcessId then GetModuleFileName to get the exe path/name
+
+
+	SYSTEMTIME currentTime;
+
 	ShowWindow(hwnd, nCmdShow);
 
-	MSG msg = {}; // do need to zero initalize?
+	MSG msg = {};
 	while (GetMessage(&msg, NULL, 0, 0)) {
-		OutputDebugStringW(L"Got message\n");
+		GetSystemTime(&currentTime);
 		TranslateMessage(&msg); // does things with key messages
 		DispatchMessage(&msg); // Calls into the WindowsProc we gave it in the WndClass
 	}
