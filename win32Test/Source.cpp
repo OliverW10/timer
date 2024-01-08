@@ -12,21 +12,56 @@
 #include <strsafe.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <wchar.h>
 
 // https://stackoverflow.com/a/52514703/8847653
 #define MY_PRINTF(...) {wchar_t cad[512]; swprintf(cad, 512, __VA_ARGS__);  OutputDebugString(cad);}
 
-
+HFONT hFont = NULL;
 bool colourAlternate = 0;
+uint64_t startTime;
+
 void Paint(HWND windowHandle) {
+	if (hFont == NULL) {
+		hFont = (HFONT)GetStockObject(SYSTEM_FIXED_FONT);
+	}
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(windowHandle, &ps);
-	HBRUSH brush = colourAlternate ? (HBRUSH)(COLOR_WINDOW + 1) : (HBRUSH)(COLOR_WINDOWTEXT + 1);
-	FillRect(hdc, &ps.rcPaint, brush);
-	DrawText(hdc, L"My Text!", -1, &ps.rcPaint, DT_CENTER | DT_VCENTER);
+	//HBRUSH brush = colourAlternate ? (HBRUSH)(COLOR_WINDOW + 1) : (HBRUSH)(COLOR_WINDOWTEXT + 1);
+	//FillRect(hdc, &ps.rcPaint, brush);
+	HFONT hFont;
+	hFont = CreateFont(48, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
+		CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, TEXT("Candara"));
+	HFONT hFontOriginal = (HFONT)SelectObject(hdc, hFont);
+
+	SetTextColor(hdc, RGB(255, 0, 0));
+
+	SYSTEMTIME currentTimeParts;
+	GetSystemTime(&currentTimeParts);
+	uint64_t currentTime;
+	SystemTimeToFileTime(&currentTimeParts, (LPFILETIME)&currentTime);
+	int delta = startTime - currentTime;
+
+	wchar_t* str = (wchar_t*)malloc(sizeof(wchar_t)*128); // TODO memory leak
+	swprintf_s(str, 128, L"%d", delta);
+	//OutputDebugStringW(str);
+	DrawText(hdc, str, -1, &ps.rcPaint, DT_CENTER | DT_VCENTER);
+
 	EndPaint(windowHandle, &ps);
 	colourAlternate = !colourAlternate;
-	MY_PRINTF(L"%d\n", colourAlternate)
+}
+
+HCURSOR hCursor = NULL;
+bool SetCursor(LPARAM lParam) {
+	if (hCursor == NULL) {
+		LPCTSTR cursor = IDC_NO;
+		hCursor = LoadCursor(NULL, cursor);
+	}
+	if (LOWORD(lParam) == HTCLIENT)
+	{
+		SetCursor(hCursor);
+		return true;
+	}
 }
 
 const int wordMask = (1 << 16) - 1;
@@ -56,11 +91,21 @@ LRESULT CALLBACK WindowProc(HWND windowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 	case WM_DESTROY: // After main window is destoryed
 		PostQuitMessage(0); // queues a WM_QUIT
 		break;
+	case WM_SETCURSOR:
+		return SetCursor(lParam);
 	default:
 		return DefWindowProc(windowHandle, uMsg, wParam, lParam); // will handle the WM_QUIT?
 	}
 	return 0;
 };
+
+DWORD WINAPI TimerThread(LPVOID hWnd) {
+
+	while (true) {
+		Sleep(100);
+		UpdateWindow((HWND)hWnd);
+	}
+}
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	PSTR lpCmdLine, int nCmdShow)
@@ -82,7 +127,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		WS_EX_TOPMOST | WS_POPUP,            // Window style WS_EX_TRANSPARENT
 
 		// Size and position
-		100, 100, 100, 100,
+		100, 100, 200, 100,
 
 		NULL,       // Parent window    
 		NULL,       // Menu
@@ -94,12 +139,26 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	}
 
 	SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+	SYSTEMTIME startTimeParts;
+	GetSystemTime(&startTimeParts);
+	SystemTimeToFileTime(&startTimeParts, (LPFILETIME)&startTime);
 
-	SYSTEMTIME startTime;
-	GetSystemTime(&startTime);
+	DWORD threadId;
+	HANDLE hThread = CreateThread(
+		NULL,
+		0,
+		TimerThread,
+		hwnd,
+		0,
+		&threadId
+	);
+	if (hThread == NULL) {
+		OutputDebugStringW(L"failed to create thread\n");
+		return -1;
+	}
 
-	/*OutputDebugStringW(L"Started\n");
-	Sleep(2000);*/
+
+
 	OutputDebugStringW(L"Capturing\n");
 	HWND foregroundWindow = GetForegroundWindow();
 	wchar_t* str = (wchar_t*)malloc(sizeof(wchar_t) * 128);
@@ -107,14 +166,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	OutputDebugStringW(str);
 	// if the titles are changing can swap to using GetWindowThreadProcessId then GetModuleFileName to get the exe path/name
 
-
-	SYSTEMTIME currentTime;
-
 	ShowWindow(hwnd, nCmdShow);
 
 	MSG msg = {};
 	while (GetMessage(&msg, NULL, 0, 0)) {
-		GetSystemTime(&currentTime);
 		TranslateMessage(&msg); // does things with key messages
 		DispatchMessage(&msg); // Calls into the WindowsProc we gave it in the WndClass
 	}
