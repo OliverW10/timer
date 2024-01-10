@@ -1,6 +1,4 @@
 // TODO
-// - No window, just text
-// - Show in system tray (called notifications)
 // - Shortcuts (need to register or can just get events?)
 // - SQLite
 // - Stop on sleep?
@@ -17,33 +15,52 @@
 // https://stackoverflow.com/a/52514703/8847653
 #define MY_PRINTF(...) {wchar_t cad[512]; swprintf(cad, 512, __VA_ARGS__);  OutputDebugString(cad);}
 
-HFONT hFont = NULL;
+
+HFONT hFont;
+void SetMyFont(HDC hdc) {
+	if (hFont == NULL) {
+		//hFont = (HFONT)GetStockObject(SYSTEM_FIXED_FONT);
+		hFont = CreateFont(64, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
+			CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, TEXT("Candara"));
+	}
+	(HFONT)SelectObject(hdc, hFont);
+}
+
+ULARGE_INTEGER startTime;
+bool hasSetStartTime = false;
+double GetTimeSinceFirstCall() {
+	ULARGE_INTEGER currentTime;
+	GetSystemTimeAsFileTime((LPFILETIME) & currentTime);
+	if (!hasSetStartTime) {
+		startTime = currentTime;
+		hasSetStartTime = true;
+	}
+	startTime.QuadPart += 1;
+	// in 100ns intervals
+	double delta = (currentTime.QuadPart - startTime.QuadPart) / 10'000'000.0;
+	return delta;
+}
+
 bool colourAlternate = 0;
-uint64_t startTime;
 
 void Paint(HWND windowHandle) {
-	if (hFont == NULL) {
-		hFont = (HFONT)GetStockObject(SYSTEM_FIXED_FONT);
-	}
+	
 	PAINTSTRUCT ps;
+	// handle to device context
 	HDC hdc = BeginPaint(windowHandle, &ps);
-	//HBRUSH brush = colourAlternate ? (HBRUSH)(COLOR_WINDOW + 1) : (HBRUSH)(COLOR_WINDOWTEXT + 1);
-	//FillRect(hdc, &ps.rcPaint, brush);
-	HFONT hFont;
-	hFont = CreateFont(48, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
-		CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, TEXT("Candara"));
-	HFONT hFontOriginal = (HFONT)SelectObject(hdc, hFont);
-
+	
+	SetMyFont(hdc);
 	SetTextColor(hdc, RGB(255, 0, 0));
+	SetBkMode(hdc, TRANSPARENT); // didnt work
 
-	SYSTEMTIME currentTimeParts;
-	GetSystemTime(&currentTimeParts);
-	uint64_t currentTime;
-	SystemTimeToFileTime(&currentTimeParts, (LPFILETIME)&currentTime);
-	int delta = startTime - currentTime;
+	FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
+
+	float timerSeconds = GetTimeSinceFirstCall();
 
 	wchar_t* str = (wchar_t*)malloc(sizeof(wchar_t)*128); // TODO memory leak
-	swprintf_s(str, 128, L"%d", delta);
+	// Convert into to wide string
+	swprintf_s(str, 128, L"%.1f", timerSeconds);
+
 	//OutputDebugStringW(str);
 	DrawText(hdc, str, -1, &ps.rcPaint, DT_CENTER | DT_VCENTER);
 
@@ -54,7 +71,7 @@ void Paint(HWND windowHandle) {
 HCURSOR hCursor = NULL;
 bool SetCursor(LPARAM lParam) {
 	if (hCursor == NULL) {
-		LPCTSTR cursor = IDC_NO;
+		LPCTSTR cursor = IDC_ARROW;
 		hCursor = LoadCursor(NULL, cursor);
 	}
 	if (LOWORD(lParam) == HTCLIENT)
@@ -69,9 +86,9 @@ LRESULT CALLBACK WindowProc(HWND windowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 	switch (uMsg) {
 	case WM_SIZE:
 	{
-		int width = lParam & wordMask;
-		int height = (lParam >> 16) & wordMask;
-		// need to cast because its c++
+		int width = LOWORD(lParam);
+		int height = HIWORD(lParam);
+		// need to cast because its compiled with c++
 		wchar_t* msg = (wchar_t*)malloc(32 * sizeof(wchar_t));
 		if(msg == NULL) return 1; // shut up warning
 
@@ -81,11 +98,9 @@ LRESULT CALLBACK WindowProc(HWND windowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 	}
 		break;
 	case WM_PAINT:
-	{
 		Paint(windowHandle);
-	}
 		break;
-	case WM_CLOSE: // When close button or shortcut is pressed
+	case WM_CLOSE: // When close button or alt-f4 is pressed
 		DestroyWindow(windowHandle);
 		break;
 	case WM_DESTROY: // After main window is destoryed
@@ -93,6 +108,8 @@ LRESULT CALLBACK WindowProc(HWND windowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 		break;
 	case WM_SETCURSOR:
 		return SetCursor(lParam);
+	case WM_ERASEBKGND:
+		return 0;
 	default:
 		return DefWindowProc(windowHandle, uMsg, wParam, lParam); // will handle the WM_QUIT?
 	}
@@ -102,8 +119,8 @@ LRESULT CALLBACK WindowProc(HWND windowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 DWORD WINAPI TimerThread(LPVOID hWnd) {
 
 	while (true) {
-		Sleep(100);
-		UpdateWindow((HWND)hWnd);
+		Sleep(20);
+		RedrawWindow((HWND)hWnd, NULL, NULL, RDW_INVALIDATE | RDW_INTERNALPAINT);
 	}
 }
 
@@ -112,22 +129,23 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 {
 	const wchar_t WND_CLASS_NAME[] = L"IDontKnowWhatThisShouldBe";
 
-	WNDCLASS wc = {}; // Brakets zero initialize struct
+	WNDCLASS windowClass = {}; // Brakets zero initialize struct
 	// lpfnWndProc = long pointer to a function called Window Procedure (i love microsoft <3)
-	wc.lpfnWndProc = WindowProc;
-	wc.hInstance = hInstance;
-	wc.lpszClassName = WND_CLASS_NAME;
-	RegisterClass(&wc);
+	windowClass.lpfnWndProc = WindowProc;
+	windowClass.hInstance = hInstance;
+	windowClass.lpszClassName = WND_CLASS_NAME;
+	//windowClass.hbrBackground = 
+	RegisterClass(&windowClass);
 
 	// hwnd = Handle to window
 	HWND hwnd = CreateWindowEx(
 		0,                              // Optional window styles.
 		WND_CLASS_NAME,                     // Window class
 		L"Learn to Program Windows",    // Window text
-		WS_EX_TOPMOST | WS_POPUP,            // Window style WS_EX_TRANSPARENT
+		(WS_EX_TOPMOST | WS_POPUP) & ~WS_CLIPCHILDREN,            // Window style WS_EX_TRANSPARENT
 
 		// Size and position
-		100, 100, 200, 100,
+		100, 100, 120, 75,
 
 		NULL,       // Parent window    
 		NULL,       // Menu
