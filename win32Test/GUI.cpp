@@ -57,7 +57,8 @@ void Paint(HWND windowHandle) {
 HCURSOR hCursor = NULL;
 bool SetCursor(LPARAM lParam) {
 	if (hCursor == NULL) {
-		LPCTSTR cursor = IDC_ARROW;
+		// long pointer to constant TCHAR (wchar or char) string
+		LPCTSTR cursor = IDC_SIZEALL; // not working for some reason
 		hCursor = LoadCursor(NULL, cursor);
 	}
 	if (LOWORD(lParam) == HTCLIENT)

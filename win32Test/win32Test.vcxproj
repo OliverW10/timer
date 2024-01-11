@@ -70,6 +70,10 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ExternalIncludePath>C:\Users\Oliver.Warrick\Downloads\sqlite-amalgamation-3440200\sqlite-amalgamation-3440200;$(ExternalIncludePath)</ExternalIncludePath>
+    <LibraryPath>C:\Users\Oliver.Warrick\Downloads\sqlite-dll-win-x64-3440200;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -130,10 +134,15 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="GUI.cpp" />
     <ClCompile Include="DB.cpp" />
+    <ClCompile Include="Toast.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DB.h" />
     <ClInclude Include="GUI.h" />
+    <ClInclude Include="Toast.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="schema.sql" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

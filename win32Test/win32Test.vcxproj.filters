@@ -24,6 +24,9 @@
     <ClCompile Include="DB.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Toast.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GUI.h">
@@ -32,5 +35,13 @@
     <ClInclude Include="DB.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Toast.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="schema.sql">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

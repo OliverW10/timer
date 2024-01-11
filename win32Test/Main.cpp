@@ -28,6 +28,9 @@ LRESULT CALLBACK WindowProc(HWND windowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 		// close
 		DestroyWindow(windowHandle);
 		break;
+	case WM_NCHITTEST:
+		return HTCAPTION;
+		break;
 	default:
 		return DefWindowProc(windowHandle, uMsg, wParam, lParam);
 	}
