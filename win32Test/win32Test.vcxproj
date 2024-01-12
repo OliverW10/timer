@@ -71,8 +71,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ExternalIncludePath>C:\Users\Oliver.Warrick\Downloads\sqlite-amalgamation-3440200\sqlite-amalgamation-3440200;$(ExternalIncludePath)</ExternalIncludePath>
-    <LibraryPath>C:\Users\Oliver.Warrick\Downloads\sqlite-dll-win-x64-3440200;$(LibraryPath)</LibraryPath>
+    <ExternalIncludePath>$(ExternalIncludePath)</ExternalIncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -139,10 +139,8 @@
   <ItemGroup>
     <ClInclude Include="DB.h" />
     <ClInclude Include="GUI.h" />
+    <ClInclude Include="State.h" />
     <ClInclude Include="Toast.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="schema.sql" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

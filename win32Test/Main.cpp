@@ -1,5 +1,5 @@
 // TODO
-// - SQLite
+// - SQLite - Decided to ditch, don't like the fact that types can be anything, the lack of datetime and was having trouble getting it to link correctly.
 // - Stop on sleep?
 // - Autostart / Installer (msix?)
 // - Toast comfirmation notification on close
@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "GUI.h"
+#include "DB.h"
+#include "State.h"
 
 LRESULT CALLBACK WindowProc(HWND windowHandle, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
@@ -24,13 +26,15 @@ LRESULT CALLBACK WindowProc(HWND windowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 	case WM_SETCURSOR:
 		return SetCursor(lParam);
 	case WM_HOTKEY:
-		// write to sqlite
+		SaveSession(windowHandle);
 		// close
 		DestroyWindow(windowHandle);
 		break;
 	case WM_NCHITTEST:
 		return HTCAPTION;
-		break;
+	case WM_CREATE:
+		SetWindowLongPtr(windowHandle, GWLP_USERDATA, (LONG_PTR)((CREATESTRUCT*)lParam)->lpCreateParams);
+		
 	default:
 		return DefWindowProc(windowHandle, uMsg, wParam, lParam);
 	}
@@ -40,7 +44,7 @@ LRESULT CALLBACK WindowProc(HWND windowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 wchar_t* GetForegroundWindowName() {
 	HWND foregroundWindow = GetForegroundWindow();
 	const int MAX_NAME_LENGTH = 300;
-	wchar_t* str = (wchar_t*)malloc(sizeof(wchar_t) * MAX_NAME_LENGTH);
+	wchar_t* str = new wchar_t[MAX_NAME_LENGTH];
 	GetWindowTextW(foregroundWindow, str, MAX_NAME_LENGTH);
 	OutputDebugStringW(str);
 	return str;
@@ -50,9 +54,15 @@ wchar_t* GetForegroundWindowName() {
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	PSTR lpCmdLine, int nCmdShow)
 {
-	HWND hwnd = CreateTimerWindow(WindowProc, hInstance, nCmdShow);
+	AppState state;
+
+	state.appName = GetForegroundWindowName();
+	state.elapsed = 0;
+
+	HWND hwnd = CreateTimerWindow(WindowProc, hInstance, nCmdShow, &state);
 
 	RegisterHotKey(hwnd, 999, MOD_ALT, 0x54); // alt + t
+
 
 	MSG msg = {};
 	while (GetMessage(&msg, NULL, 0, 0)) {

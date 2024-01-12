@@ -1,4 +1,4 @@
 #pragma once
+#include <Windows.h>
 
-
-int SaveSession(wchar_t* appName, double timeSeconds);
+int SaveSession(HWND hWnd);

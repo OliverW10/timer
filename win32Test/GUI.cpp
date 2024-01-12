@@ -1,15 +1,15 @@
 #include "GUI.h"
+#include "State.h"
 #include <stdio.h>
 
 
-HFONT hFont;
-void SetMyFont(HDC hdc) {
-	if (hFont == NULL) {
-		//hFont = (HFONT)GetStockObject(SYSTEM_FIXED_FONT);
-		hFont = CreateFont(64, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
-			CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, TEXT("Candara"));
-	}
-	(HFONT)SelectObject(hdc, hFont);
+HFONT* bigTextFont;
+HFONT* smallTextFont;
+void CreateAndSetFont(HFONT* font, HDC hdc, int size) {
+	HFONT createdFont = CreateFont(size, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
+		CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, TEXT("Candara"));
+	font = &createdFont;
+	SelectObject(hdc, *font);
 }
 
 ULARGE_INTEGER startTime;
@@ -28,25 +28,32 @@ double GetTimeSinceFirstCall() {
 }
 
 void Paint(HWND windowHandle) {
+	AppState *appState = GetAppState(windowHandle);
+	appState->elapsed = GetTimeSinceFirstCall();
 
 	PAINTSTRUCT ps;
 	// handle to device context
 	HDC hdc = BeginPaint(windowHandle, &ps);
 
-	SetMyFont(hdc);
-	SetTextColor(hdc, RGB(255, 0, 0));
-	SetBkMode(hdc, TRANSPARENT); // didnt work
-
 	FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
 
-	float timerSeconds = GetTimeSinceFirstCall();
+	CreateAndSetFont(bigTextFont, hdc, 64);
+	SetTextColor(hdc, RGB(255, 0, 0));
 
-	wchar_t* str = (wchar_t*)malloc(sizeof(wchar_t) * 128); // TODO memory leak
+	wchar_t* str = (wchar_t*)malloc(sizeof(wchar_t) * 128);
 	// Convert into to wide string
-	swprintf_s(str, 128, L"%.1f", timerSeconds);
+	swprintf_s(str, 128, L"%.1f", appState->elapsed);
+	RECT timerTextRect = ps.rcPaint;
+	timerTextRect.top -= 5;
+	DrawText(hdc, str, -1, &timerTextRect, DT_CENTER | DT_VCENTER);
 
-	//OutputDebugStringW(str);
-	DrawText(hdc, str, -1, &ps.rcPaint, DT_CENTER | DT_VCENTER);
+	CreateAndSetFont(smallTextFont, hdc, 12);
+	SetTextColor(hdc, RGB(0, 0, 0));
+	RECT trackedProgramTitleTextRect = ps.rcPaint;
+	trackedProgramTitleTextRect.top = (ps.rcPaint.top + ps.rcPaint.bottom) * 0.8;
+	DrawText(hdc, appState->appName, -1, &trackedProgramTitleTextRect, DT_CENTER | DT_VCENTER);
+
+	free(str);
 
 	EndPaint(windowHandle, &ps);
 }
@@ -77,7 +84,7 @@ DWORD WINAPI TimerThread(LPVOID hWnd) {
 }
 
 
-HWND CreateTimerWindow(WNDPROC windowProc, HINSTANCE hInstance, int nCmdShow) {
+HWND CreateTimerWindow(WNDPROC windowProc, HINSTANCE hInstance, int nCmdShow, AppState* appState) {
 	//// Create Window Class
 	const wchar_t WND_CLASS_NAME[] = L"IDontKnowWhatThisShouldBe";
 	WNDCLASS windowClass = {}; // Brakets zero initialize struct
@@ -94,7 +101,7 @@ HWND CreateTimerWindow(WNDPROC windowProc, HINSTANCE hInstance, int nCmdShow) {
 		0,                              // Optional window styles.
 		WND_CLASS_NAME,                     // Window class
 		L"Learn to Program Windows",    // Window text
-		(WS_EX_TOPMOST | WS_POPUP) & ~WS_CLIPCHILDREN,            // Window style WS_EX_TRANSPARENT
+		WS_EX_TOPMOST | WS_POPUP,            // Window style   WS_EX_TRANSPARENT
 
 		// Size and position
 		100, 100, 120, 75,
@@ -102,7 +109,7 @@ HWND CreateTimerWindow(WNDPROC windowProc, HINSTANCE hInstance, int nCmdShow) {
 		NULL,       // Parent window    
 		NULL,       // Menu
 		hInstance,  // Instance handle
-		NULL        // Additional application data
+		appState        // Additional application data
 	);
 
 

@@ -38,10 +38,8 @@
     <ClInclude Include="Toast.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="schema.sql">
-      <Filter>Resource Files</Filter>
-    </None>
+    <ClInclude Include="State.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
