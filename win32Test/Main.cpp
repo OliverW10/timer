@@ -1,5 +1,5 @@
 // TODO
-// - SQLite - Decided to ditch, don't like the fact that types can be anything, the lack of datetime and was having trouble getting it to link correctly.
+// - Write to file
 // - Stop on sleep?
 // - Autostart / Installer (msix?)
 // - Toast comfirmation notification on close
@@ -21,20 +21,18 @@ LRESULT CALLBACK WindowProc(HWND windowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 		DestroyWindow(windowHandle);
 		break;
 	case WM_DESTROY: // After main window is destoryed
+		SaveSession(windowHandle);
 		PostQuitMessage(0); // queues a WM_QUIT that, when handled by DefWindowProc will close the app
 		break;
 	case WM_SETCURSOR:
 		return SetCursor(lParam);
 	case WM_HOTKEY:
-		SaveSession(windowHandle);
-		// close
 		DestroyWindow(windowHandle);
 		break;
 	case WM_NCHITTEST:
 		return HTCAPTION;
 	case WM_CREATE:
 		SetWindowLongPtr(windowHandle, GWLP_USERDATA, (LONG_PTR)((CREATESTRUCT*)lParam)->lpCreateParams);
-		
 	default:
 		return DefWindowProc(windowHandle, uMsg, wParam, lParam);
 	}
