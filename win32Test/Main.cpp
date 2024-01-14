@@ -1,8 +1,8 @@
 // TODO
 // - Write to file
-// - Stop on sleep?
 // - Autostart / Installer (msix?)
 // - Toast comfirmation notification on close
+// - Stop on sleep?
 
 
 #include <Windows.h>

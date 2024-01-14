@@ -7,6 +7,7 @@
 #include <wininet.h>
 #include <memory>
 #include <atlstr.h>
+#include <string>
 
 #pragma comment(lib, "Wininet")
 
@@ -32,6 +33,37 @@ bool EnsureDirectoryExists(LPCWSTR directoryPath) {
 }
 
 
+// https://stackoverflow.com/a/17387176
+//Returns the last Win32 error, in string format. Returns an empty string if there is no error.
+std::wstring GetLastErrorAsString()
+{
+	//Get the error message ID, if any.
+	DWORD errorMessageID = ::GetLastError();
+	if (errorMessageID == 0) {
+		return std::wstring(); //No error message has been recorded
+	}
+
+	LPWSTR messageBuffer = nullptr;
+
+	//Ask Win32 to give us the string version of that message ID.
+	//The parameters we pass in, tell Win32 to create the buffer that holds the message for us (because we don't yet know how long the message string will be).
+	size_t size = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&messageBuffer, 0, NULL);
+
+	//Copy the error message into a std::string.
+	std::wstring message(messageBuffer, size);
+	message.append(L", number: ");
+	message.append(std::to_wstring(errorMessageID));
+	message.append(L"\n");
+	//ERROR_FUNCTION_NOT_CALLED
+
+	//Free the Win32's string's buffer.
+	LocalFree(messageBuffer);
+
+	return message;
+}
+
+
 PCWSTR csvHeader = L"ProgName, EndDateTime, DurationSeconds\n";
 
 LPCTSTR GetTextToWrite(bool isFirst, AppState* state) {
@@ -46,7 +78,7 @@ LPCTSTR GetTextToWrite(bool isFirst, AppState* state) {
 	GetSystemTime(&currentTime);
 	InternetTimeFromSystemTime(&currentTime, INTERNET_RFC1123_FORMAT, dateBuf, INTERNET_RFC1123_BUFSIZE);
 	outText.Append(dateBuf);
-	outText.AppendFormat(L", %d", state->elapsed);
+	outText.AppendFormat(L", %f", state->elapsed);
 	return outText; // i think this makes a copy so doesn't matter that it goes out of scope
 }
 
@@ -54,7 +86,7 @@ int SaveSession(HWND hWnd) {
 	AppState* state = GetAppState(hWnd);
 
 	PWSTR path;
-	SHGetKnownFolderPath(FOLDERID_ProgramData, SHGFP_TYPE_CURRENT, NULL, &path);
+	SHGetKnownFolderPath(FOLDERID_Documents, SHGFP_TYPE_CURRENT, NULL, &path);
 	CString full_path;
 	full_path.Append(path);
 	full_path.Append(L"\\Timer");
@@ -66,15 +98,11 @@ int SaveSession(HWND hWnd) {
 
 	bool newlyCreated = FileExists(path);
 	// despite the name CreateFile actually opens the file
-	HANDLE fileHandle = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_WRITE , NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (fileHandle == INVALID_HANDLE_VALUE) {
-		//throw - 1;
-		OutputDebugStringW(L"failed to create file\n");
-		return -1;
-	}
+	HANDLE fileHandle = CreateFileW(full_path, FILE_APPEND_DATA | FILE_GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	SetFilePointer(fileHandle, 0, NULL, FILE_END);
 	CString newText = GetTextToWrite(newlyCreated, state);
-	WriteFile(fileHandle, newText, newText.GetLength(), NULL, NULL);
+	DWORD bytesWritten;
+	bool successfulWrite = WriteFile(fileHandle, newText, newText.GetLength(), &bytesWritten, NULL);
 	CloseHandle(fileHandle);
 	return 0;
 }
