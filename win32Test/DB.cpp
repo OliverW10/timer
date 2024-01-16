@@ -8,6 +8,7 @@
 #include <memory>
 #include <atlstr.h>
 #include <string>
+#include <time.h>
 
 #pragma comment(lib, "Wininet")
 
@@ -64,22 +65,28 @@ std::wstring GetLastErrorAsString()
 }
 
 
+// https://stackoverflow.com/a/6161842
+#define WINDOWS_TICK 10000000
+#define SEC_TO_UNIX_EPOCH 11644473600LL
+unsigned WindowsTickToUnixSeconds(long long windowsTicks)
+{
+	return (unsigned)(windowsTicks / WINDOWS_TICK - SEC_TO_UNIX_EPOCH);
+}
+
 PCWSTR csvHeader = L"ProgName, EndDateTime, DurationSeconds\n";
 
-LPCTSTR GetTextToWrite(bool isFirst, AppState* state) {
+CString GetTextToWrite(bool isFirst, AppState* state) {
 	CString outText;
 	if (isFirst) {
 		outText.Append(csvHeader);
 	}
 	outText.Append(state->appName);
-	outText.Append(L", ");
-	TCHAR *dateBuf = new TCHAR[INTERNET_RFC1123_BUFSIZE];
-	SYSTEMTIME currentTime;
-	GetSystemTime(&currentTime);
-	InternetTimeFromSystemTime(&currentTime, INTERNET_RFC1123_FORMAT, dateBuf, INTERNET_RFC1123_BUFSIZE);
-	outText.Append(dateBuf);
-	outText.AppendFormat(L", %f", state->elapsed);
-	return outText; // i think this makes a copy so doesn't matter that it goes out of scope
+
+	ULARGE_INTEGER currentTime;
+	GetSystemTimeAsFileTime((LPFILETIME)&currentTime);
+	outText.AppendFormat(L", %lld, %f\n", WindowsTickToUnixSeconds(currentTime.QuadPart), state->elapsed);
+
+	return outText; // copying a CString makes a copy of its buffer (i think) so its safe
 }
 
 int SaveSession(HWND hWnd) {
@@ -93,16 +100,15 @@ int SaveSession(HWND hWnd) {
 	EnsureDirectoryExists(full_path);
 	full_path.Append(L"\\Sessions.csv");
 
-	OutputDebugStringW(full_path);
-	OutputDebugStringW(L"\nhere!!!!\n");
+	//OutputDebugStringW(full_path);
 
 	bool newlyCreated = FileExists(path);
 	// despite the name CreateFile actually opens the file
 	HANDLE fileHandle = CreateFileW(full_path, FILE_APPEND_DATA | FILE_GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	SetFilePointer(fileHandle, 0, NULL, FILE_END);
-	CString newText = GetTextToWrite(newlyCreated, state);
+	CString newText = GetTextToWrite(!newlyCreated, state);
 	DWORD bytesWritten;
-	bool successfulWrite = WriteFile(fileHandle, newText, newText.GetLength(), &bytesWritten, NULL);
+	bool successfulWrite = WriteFile(fileHandle, newText, newText.GetLength() * sizeof(TCHAR), &bytesWritten, NULL);
 	CloseHandle(fileHandle);
 	return 0;
 }
