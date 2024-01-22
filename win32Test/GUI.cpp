@@ -109,7 +109,7 @@ HWND CreateTimerWindow(WNDPROC windowProc, HINSTANCE hInstance, int nCmdShow, Ap
 		// hwnd = Handle to window
 		0,                              // Optional window styles.
 		WND_CLASS_NAME,                     // Window class
-		L"Learn to Program Windows",    // Window text
+		L"Timer App",    // Window text
 		WS_EX_TOPMOST | WS_POPUP,            // Window style   WS_EX_TRANSPARENT
 
 		// Size and position

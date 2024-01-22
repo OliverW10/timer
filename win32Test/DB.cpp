@@ -102,7 +102,7 @@ int SaveSession(HWND hWnd) {
 
 	//OutputDebugStringW(full_path);
 
-	bool newlyCreated = FileExists(path);
+	bool newlyCreated = FileExists(full_path);
 	// despite the name CreateFile actually opens the file
 	HANDLE fileHandle = CreateFileW(full_path, FILE_APPEND_DATA | FILE_GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	SetFilePointer(fileHandle, 0, NULL, FILE_END);

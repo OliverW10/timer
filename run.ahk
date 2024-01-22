@@ -1,0 +1,1 @@
+^!t::Run "C:\Users\Oliver.Warrick\source\repos\timer\x64\Debug\win32Test.exe"

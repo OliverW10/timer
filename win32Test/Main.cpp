@@ -1,6 +1,5 @@
 // TODO
-// - Write to file
-// - Autostart / Installer (msix?)
+// - Change to not use window title
 // - Toast comfirmation notification on close
 // - Stop on sleep?
 
